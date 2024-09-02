@@ -43,11 +43,11 @@ class FileMonitorHandler(FileSystemEventHandler):
                                 mon_path=self._watch_path, event_path=event.dest_path)
 
 
-class LinkMonitor(_PluginBase):
+class CopyMonitor(_PluginBase):
     # 插件名称
-    plugin_name = "实时硬链接"
+    plugin_name = "实时拷贝"
     # 插件描述
-    plugin_desc = "监控目录文件变化，按原文件名硬链接。"
+    plugin_desc = "监控目录文件变化，按原文件名拷贝。"
     # 插件图标
     plugin_icon = "Linkace_C.png"
     # 插件版本
@@ -57,7 +57,7 @@ class LinkMonitor(_PluginBase):
     # 作者主页
     author_url = "https://github.com/jxxghp"
     # 插件配置项ID前缀
-    plugin_config_prefix = "linkmonitor_"
+    plugin_config_prefix = "copymonitor_"
     # 加载顺序
     plugin_order = 4
     # 可使用的用户级别
@@ -130,8 +130,8 @@ class LinkMonitor(_PluginBase):
                     target_path = Path(paths[1])
                     self._dirconf[mon_path] = target_path
                 else:
-                    logger.warn(f"{mon_path} 未配置目的目录，将不会进行硬链接")
-                    self.systemmessage.put(f"{mon_path} 未配置目的目录，将不会进行硬链接！", title="实时硬链接")
+                    logger.warn(f"{mon_path} 未配置目的目录，将不会进行拷贝")
+                    self.systemmessage.put(f"{mon_path} 未配置目的目录，将不会进行拷贝！", title="实时拷贝")
                     continue
 
                 # 启用目录监控
@@ -140,7 +140,7 @@ class LinkMonitor(_PluginBase):
                     try:
                         if target_path and target_path.is_relative_to(Path(mon_path)):
                             logger.warn(f"{target_path} 是监控目录 {mon_path} 的子目录，无法监控")
-                            self.systemmessage.put(f"{target_path} 是下载目录 {mon_path} 的子目录，无法监控", title="实时硬链接")
+                            self.systemmessage.put(f"{target_path} 是下载目录 {mon_path} 的子目录，无法监控", title="实时拷贝")
                             continue
                     except Exception as e:
                         logger.debug(str(e))
@@ -170,7 +170,7 @@ class LinkMonitor(_PluginBase):
                                      """)
                         else:
                             logger.error(f"{mon_path} 启动目录监控失败：{err_msg}")
-                        self.systemmessage.put(f"{mon_path} 启动目录监控失败：{err_msg}", title="实时硬链接")
+                        self.systemmessage.put(f"{mon_path} 启动目录监控失败：{err_msg}", title="实时拷贝")
 
             # 运行一次定时服务
             if self._onlyonce:
@@ -213,27 +213,27 @@ class LinkMonitor(_PluginBase):
         """
         if event:
             event_data = event.event_data
-            if not event_data or event_data.get("action") != "realtime_link":
+            if not event_data or event_data.get("action") != "realtime_copy":
                 return
             self.post_message(channel=event.event_data.get("channel"),
-                              title="开始实时硬链接 ...",
+                              title="开始实时拷贝 ...",
                               userid=event.event_data.get("user"))
         self.sync_all()
         if event:
             self.post_message(channel=event.event_data.get("channel"),
-                              title="实时硬链接完成！", userid=event.event_data.get("user"))
+                              title="实时拷贝完成！", userid=event.event_data.get("user"))
 
     def sync_all(self):
         """
         立即运行一次，全量同步目录中所有文件
         """
-        logger.info("开始全量实时硬链接 ...")
+        logger.info("开始全量实时拷贝 ...")
         # 遍历所有监控目录
         for mon_path in self._dirconf.keys():
             # 遍历目录下所有文件
             for file_path in SystemUtils.list_files(Path(mon_path), ['.*']):
                 self.__handle_file(event_path=str(file_path), mon_path=mon_path)
-        logger.info("全量实时硬链接完成！")
+        logger.info("全量实时拷贝完成！")
 
     def event_handler(self, event, mon_path: str, text: str, event_path: str):
         """
@@ -249,8 +249,8 @@ class LinkMonitor(_PluginBase):
             self.__handle_file(event_path=event_path, mon_path=mon_path)
 
     @staticmethod
-    def _link_file(src_path: Path, mon_path: str,
-                   target_path: Path, transfer_type: str = "link") -> Tuple[bool, str]:
+    def _copy_file(src_path: Path, mon_path: str,
+                   target_path: Path, transfer_type: str = "copy") -> Tuple[bool, str]:
         """
         对文件做纯链接处理，不做识别重命名，则监控模块调用
         :param : 来源渠道
@@ -315,30 +315,30 @@ class LinkMonitor(_PluginBase):
                 # 查询转移目的目录
                 target: Path = self._dirconf.get(mon_path)
                 if not target:
-                    logger.warn(f"{mon_path} 未配置目的目录，将不会进行硬链接")
+                    logger.warn(f"{mon_path} 未配置目的目录，将不会进行拷贝")
                     return
 
                 # 开始硬连接
-                state, errmsg = self._link_file(src_path=file_path, mon_path=mon_path,
+                state, errmsg = self._copy_file(src_path=file_path, mon_path=mon_path,
                                                 target_path=target, transfer_type=_transfer_type)
 
                 if not state:
                     # 转移失败
-                    logger.warn(f"{file_path.name} 硬链接失败：{errmsg}")
+                    logger.warn(f"{file_path.name} 拷贝失败：{errmsg}")
                     if self._notify:
                         self.post_message(
                             mtype=NotificationType.Manual,
-                            title=f"{file_path.name} 硬链接失败！",
+                            title=f"{file_path.name} 拷贝失败！",
                             text=f"原因：{errmsg or '未知'}"
                         )
                     return
 
                 # 转移成功
-                logger.info(f"{file_path.name} 硬链接成功")
+                logger.info(f"{file_path.name} 拷贝成功")
                 if self._notify:
                     self.post_message(
                         mtype=NotificationType.Manual,
-                        title=f"{file_path.name} 硬链接完成！",
+                        title=f"{file_path.name} 拷贝完成！",
                         text=f"目标目录：{target}"
                     )
 
@@ -355,22 +355,22 @@ class LinkMonitor(_PluginBase):
         :return: 命令关键字、事件、描述、附带数据
         """
         return [{
-            "cmd": "/realtime_link",
+            "cmd": "/realtime_copy",
             "event": EventType.PluginAction,
-            "desc": "实时硬链接",
+            "desc": "实时拷贝",
             "category": "管理",
             "data": {
-                "action": "realtime_link"
+                "action": "realtime_copy"
             }
         }]
 
     def get_api(self) -> List[Dict[str, Any]]:
         return [{
-            "path": "/realtime_link",
+            "path": "/realtime_copy",
             "endpoint": self.sync,
             "methods": ["GET"],
-            "summary": "实时硬链接",
-            "description": "实时硬链接",
+            "summary": "实时拷贝",
+            "description": "实时拷贝",
         }]
 
     def get_service(self) -> List[Dict[str, Any]]:
@@ -386,8 +386,8 @@ class LinkMonitor(_PluginBase):
         """
         if self._enabled and self._cron:
             return [{
-                "id": "LinkMonitor",
-                "name": "全量硬链接定时服务",
+                "id": "CopyMonitor",
+                "name": "全量拷贝定时服务",
                 "trigger": CronTrigger.from_crontab(self._cron),
                 "func": self.sync_all,
                 "kwargs": {}
@@ -579,7 +579,7 @@ class LinkMonitor(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': '最小文件大小：小于最小文件大小的文件将直接复制，其余则硬链接。'
+                                            'text': '最小文件大小：小于最小文件大小的文件将直接复制，其余则拷贝。'
                                         }
                                     }
                                 ]
