@@ -51,11 +51,11 @@ class CopyMonitor(_PluginBase):
     # 插件图标
     plugin_icon = "Linkace_C.png"
     # 插件版本
-    plugin_version = "1.6"
+    plugin_version = "1.0"
     # 插件作者
-    plugin_author = "jxxghp"
+    plugin_author = "saH1rin"
     # 作者主页
-    author_url = "https://github.com/jxxghp"
+    author_url = "https://github.com/saH1rin"
     # 插件配置项ID前缀
     plugin_config_prefix = "copymonitor_"
     # 加载顺序
@@ -306,11 +306,12 @@ class CopyMonitor(_PluginBase):
                             return
 
                 # 判断文件大小
-                if self._size and float(self._size) > 0 and file_path.stat().st_size < float(self._size) * 1024:
-                    logger.info(f"{event_path} 文件大小小于最小文件大小，复制...")
-                    _transfer_type = "copy"
-                else:
-                    _transfer_type = "link"
+                # if self._size and float(self._size) > 0 and file_path.stat().st_size < float(self._size) * 1024:
+                #     logger.info(f"{event_path} 文件大小小于最小文件大小，复制...")
+                #     _transfer_type = "copy"
+                # else:
+                #     _transfer_type = "link"
+                _transfer_type = "copy"
 
                 # 查询转移目的目录
                 target: Path = self._dirconf.get(mon_path)
@@ -318,7 +319,7 @@ class CopyMonitor(_PluginBase):
                     logger.warn(f"{mon_path} 未配置目的目录，将不会进行拷贝")
                     return
 
-                # 开始硬连接
+                # 开始拷贝
                 state, errmsg = self._copy_file(src_path=file_path, mon_path=mon_path,
                                                 target_path=target, transfer_type=_transfer_type)
 
@@ -499,23 +500,6 @@ class CopyMonitor(_PluginBase):
                                         }
                                     }
                                 ]
-                            },
-                            {
-                                'component': 'VCol',
-                                'props': {
-                                    'cols': 12,
-                                    'md': 4
-                                },
-                                'content': [
-                                    {
-                                        'component': 'VTextField',
-                                        'props': {
-                                            'model': 'size',
-                                            'label': '最小文件大小（KB）',
-                                            'placeholder': ''
-                                        }
-                                    }
-                                ]
                             }
                         ]
                     },
@@ -579,7 +563,9 @@ class CopyMonitor(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': '最小文件大小：小于最小文件大小的文件将直接复制，其余则拷贝。'
+                                            'text': '每一行一个目录，支持以下几种配置方式：\n'
+                                                           '监控目录\n'
+                                                           '监控目录:转移目的目录\n'
                                         }
                                     }
                                 ]
